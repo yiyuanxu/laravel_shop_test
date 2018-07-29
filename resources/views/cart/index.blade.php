@@ -69,10 +69,22 @@
                                 </div>
                             </div>
                             <div class="form-group">
+                                <label class="control-label col-sm-3">优惠码</label>
+                                <div class="col-sm-4">
+                                    <input type="text" class="form-control" name="coupon_code">
+                                    <span class="help-block" id="coupon_desc"></span>
+                                </div>
+                                <div class="col-sm-3">
+                                    <button type="button" class="btn btn-success" id="btn-check-coupon">检查</button>
+                                    <button type="button" class="btn btn-danger" style="display: none;" id="btn-cancel-coupon">取消</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
                                 <div class="col-sm-offset-3 col-sm-3">
                                     <button type="button" class="btn btn-primary btn-create-order">提交订单</button>
                                 </div>
                             </div>
+
                         </form>
                     </div>
                 </div>
@@ -85,9 +97,6 @@
         $(document).ready(function () {
             // 监听 移除 按钮的点击事件
             $('.btn-remove').click(function () {
-                // $(this) 可以获取到当前点击的 移除 按钮的 jQuery 对象
-                // closest() 方法可以获取到匹配选择器的第一个祖先元素，在这里就是当前点击的 移除 按钮之上的 <tr> 标签
-                // data('id') 方法可以获取到我们之前设置的 data-id 属性的值，也就是对应的 SKU id
                 var id = $(this).closest('tr').data('id');
                 swal({
                     title: "确认要将该商品移除？",
@@ -124,6 +133,7 @@
                     address_id: $('#order-form').find('select[name=address]').val(),
                     items: [],
                     remark: $('#order-form').find('textarea[name=remark]').val(),
+                    coupon_code: $('input[name=coupon_code]').val(),
                 };
                 // 遍历 <table> 标签内所有带有 data-id 属性的 <tr> 标签，也就是每一个购物车中的商品 SKU
                 $('table tr[data-id]').each(function () {
@@ -147,7 +157,10 @@
                 });
                 axios.post('{{ route('orders.store') }}', req)
                     .then(function (response) {
-                        swal('订单提交成功', '', 'success');
+                        swal('订单提交成功', '', 'success')
+                            .then(() => {
+                            location.href = '/orders/' + response.data.id;
+                            });
                     }, function (error) {
                         if (error.response.status === 422) {
                             // http 状态码为 422 代表用户输入校验失败
@@ -164,6 +177,42 @@
                             swal('系统错误', '', 'error');
                         }
                     });
+            });
+            $('#btn-check-coupon').click(function () {
+                // 获取用户输入的优惠码
+                var code = $('input[name=coupon_code]').val();
+                // 如果没有输入则弹框提示
+                if(!code) {
+                    swal('请输入优惠码', '', 'warning');
+                    return;
+                }
+                // 调用检查接口
+                axios.get('/coupon_codes/' + encodeURIComponent(code))
+                    .then(function (response) {  // then 方法的第一个参数是回调，请求成功时会被调用
+                        $('#coupon_desc').text(response.data.description); // 输出优惠信息
+                        $('input[name=coupon_code]').prop('readonly', true); // 禁用输入框
+                        $('#btn-cancel-coupon').show(); // 显示 取消 按钮
+                        $('#btn-check-coupon').hide(); // 隐藏 检查 按钮
+                    }, function (error) {
+                        // 如果返回码是 404，说明优惠券不存在
+                        if(error.response.status === 404) {
+                            swal('优惠码不存在', '', 'error');
+                        } else if (error.response.status === 403) {
+                            // 如果返回码是 403，说明有其他条件不满足
+                            swal(error.response.data.msg, '', 'error');
+                        } else {
+                            // 其他错误
+                            swal('系统内部错误', '', 'error');
+                        }
+                    })
+            });
+
+            // 隐藏 按钮点击事件
+            $('#btn-cancel-coupon').click(function () {
+                $('#coupon_desc').text(''); // 隐藏优惠信息
+                $('input[name=coupon_code]').prop('readonly', false);  // 启用输入框
+                $('#btn-cancel-coupon').hide(); // 隐藏 取消 按钮
+                $('#btn-check-coupon').show(); // 显示 检查 按钮
             });
 
 

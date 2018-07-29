@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Events\OrderPaid;
+use App\Events\OrderReviewd;
+use App\Listeners\UpdateProductRating;
+use App\Listeners\UpdateProductSoldCount;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
@@ -15,6 +19,12 @@ class EventServiceProvider extends ServiceProvider
     protected $listen = [
         'App\Events\Event' => [
             'App\Listeners\EventListener',
+        ],
+        OrderPaid::class => [
+            UpdateProductSoldCount::class,
+        ],
+        OrderReviewd::class => [
+            UpdateProductRating::class,
         ],
     ];
 
